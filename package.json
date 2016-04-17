@@ -1,0 +1,25 @@
+{
+  "name": "sw-get-headers",
+  "version": "0.0.1",
+  "description": "Uses a Service Worker to read all request headers and send them back to the page's JS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmetais/sw-get-headers.git"
+  },
+  "keywords": [
+    "JavaScript",
+    "requests",
+    "headers",
+    "ServiceWorker"
+  ],
+  "author": "Gaël Métais",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gmetais/sw-get-headers/issues"
+  },
+  "homepage": "https://github.com/gmetais/sw-get-headers#readme"
+}
