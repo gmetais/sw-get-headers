@@ -1,0 +1,39 @@
+<html>
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+</head>
+<body>
+    <h1>Gzip checker example</h1>
+    <button onclick="sendCorsRequest()">Send a cross-domain request</button>
+    <button onclick="sendRequest()">Send a same-domain request</button>
+    <br>
+    <img id="googleLogo" src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" />
+    <img id="localImage" src="exemple-image.jpg" />
+    <script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
+    
+    <script src="/swgetheaders-page.js"></script>
+    <script>
+        var swgetheaders = require('swgetheaders');
+        swgetheaders.registerServiceWorker('/swgetheaders-worker.js', {logLevel: 2});
+        swgetheaders.on('plugged', function() {
+            console.log('The service worker is now activated and ready to listen to requests');
+        });
+        swgetheaders.on('request', function(request) {
+            console.log('A request was just sent:');
+            console.log(request);
+        });
+        swgetheaders.on('response', function(request, response) {
+            console.log('A response just arrived. We have both the request and the response:');
+            console.log(request);
+            console.log(response);
+        });
+
+        function sendCorsRequest() {
+            document.getElementById('googleLogo').src = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png?q=' + Date.now();
+        }
+        function sendRequest() {
+            document.getElementById('localImage').src = 'exemple-image.jpg?q=' + Date.now();
+        }
+    </script>
+</body>
+</html>

@@ -2,9 +2,10 @@
   "name": "sw-get-headers",
   "version": "0.0.1",
   "description": "Uses a Service Worker to read all request headers and send them back to the page's JS",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "jshint ./lib/*.js",
+    "compile": "browserify -r ./lib/page.js:swgetheaders -o swgetheaders-page.js && browserify lib/worker.js --outfile swgetheaders-worker.js"
   },
   "repository": {
     "type": "git",
@@ -21,5 +22,11 @@
   "bugs": {
     "url": "https://github.com/gmetais/sw-get-headers/issues"
   },
-  "homepage": "https://github.com/gmetais/sw-get-headers#readme"
+  "homepage": "https://github.com/gmetais/sw-get-headers#readme",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "browserify": "13.0.0",
+    "jshint": "2.9.1"
+  }
 }
