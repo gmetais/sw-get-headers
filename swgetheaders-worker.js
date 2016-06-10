@@ -1,66 +1,99 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var Logger = function() {
+
+    var debug = false;
+
+    function log(message) {
+        if (debug) {
+            console.info(message);
+        }
+    }
+
+    function error(message) {
+        console.error(message);
+    }
+
+    function getDebug() {
+        return debug;
+    }
+
+    function setDebug(value) {
+        debug = value;
+    }
+
+    return {
+        log: log,
+        error: error,
+        getDebug: getDebug,
+        setDebug: setDebug
+    };
+};
+
+module.exports = new Logger();
+},{}],2:[function(require,module,exports){
 var clientsList = require('./workerClientsList');
+var logger = require('./logger');
 
-const LOG_SILENT = 0;
-const LOG_ERRORS = 1;
-const LOG_WARNINGS = 2;
-const LOG_INFO = 3;
-var logLevel = LOG_WARNINGS;
 
-self.addEventListener('install', function (event) {
-    log('[Service worker] Installed', LOG_INFO);
-});
+var corsExceptions = [];
 
 self.addEventListener('activate', function (event) {
-    log('[Service worker] Activated. Let\'s do some cool things!', LOG_INFO);
+    logger.log('[Service worker] Activated');
 });
 
 self.addEventListener('message', function handler (event) {
     
     if (event.data && event.data.type === 'hello') {
         
-        if (event.data.logLevel) {
-            // TODO : find a solution to set log level before SW install and activate...
-            logLevel = event.data.logLevel;
+        if (event.data.debug) {
+            // TODO : find a solution to set debug mode before SW install and activate...
+            logger.setDebug(true);
         }
 
-        log('[Service worker] Just received the hello message', LOG_INFO);
+        corsExceptions = event.data.corsExceptions;
+
+        logger.log('[Service worker] Hello message received');
 
         var clientId = event.source.id;
         clientsList.setClientPort(clientId, event.ports[0]);
-        log('[Service worker] Messaging port registered correctly for the client', LOG_INFO);
+        logger.log('[Service worker] Client\'s messaging port registered');
 
         // Tell the client that the worker is ready
         sendToClient(clientId, {type: 'plugged'});
 
-        log('[Service worker] Now flushing the message waiting list', LOG_INFO);
+        logger.log('[Service worker] Flushing the message waiting list');
         var awaitingMessages = clientsList.flushWaitingList(clientId);
         awaitingMessages.forEach(function(data) {
             sendToClient(clientId, data);
         });
+
     } else {
-        log('[Service worker] Just received this un-catched message: ', LOG_WARNING);
-        log(event.data, LOG_WARNING);
+        logger.log('[Service worker] Un-catched message:');
+        logger.log(event.data);
     }
 });
 
 self.addEventListener('fetch', function(event) {
-    log('[Service worker] Fetch event', LOG_INFO);
-    log(event, LOG_INFO);
+    logger.log('[Service worker] Fetch event');
 
     var request = createRequestObject(event.request);
 
-    log('[Service worker] Request sent', LOG_INFO);
+    logger.log('[Service worker] Request sent');
     sendToClient(event.clientId, {
         type: 'request',
         request: request
     });
 
+    var mode = getCorsForUrl(event.request.url, event.request.referrer);
+    // Credentials would probably need some more options (which domains to send credentials to)
+    var credentials = (mode === 'same-origin') ? 'include' : 'omit';
+
     event.respondWith(
-        fetch(event.request.url, {mode: 'no-cors'})
+
+        fetch(new Request(event.request, {mode: mode, credentials: credentials}))
 
         .then(function(response) {
-            log('[Service worker] Response received', LOG_INFO);
+            logger.log('[Service worker] Response received');
 
             sendToClient(event.clientId, {
                 type: 'response',
@@ -72,8 +105,19 @@ self.addEventListener('fetch', function(event) {
         })
 
         .catch(function(error) {
-            log('[Service worker] Fetch failed:', LOG_ERRORS);
-            log(error, LOG_ERRORS);
+            logger.error('[Service worker] Fetch failed:');
+            logger.error(error);
+
+            var response = new Response(new Blob(), {
+                status: 409,
+                statusText: '[Service worker problem] Remove the CORS exception for this request'
+            });
+
+            sendToClient(event.clientId, {
+                type: 'response',
+                request: request,
+                response: createResponseObject(response)
+            });
         })
     );
 
@@ -83,13 +127,34 @@ function sendToClient(clientId, data) {
     self.clients.get(clientId).then(function(client) {
         var clientPort = clientsList.getClientPort(clientId);
         if (clientPort) {
-            log('[Service worker] Client port is known. Sending the message', LOG_INFO);
+            logger.log('[Service worker] Sending message to client');
             clientPort.postMessage(data);
         } else {
-            log('[Service worker] No client messaging port is defined yet... Pushing the message in waiting list', LOG_INFO);
+            logger.log('[Service worker] Client messaging port not defined yet... Pushing message in waiting list');
             clientsList.addToWaitingList(clientId, data);
         }
     });
+}
+
+// Checks if the request should be fetched with the mode 'cors', 'np-cors' or 'same-origin'
+function getCorsForUrl(url, referrer) {
+    var urlHost = hostParser(url);
+    var referrerHost = hostParser(referrer);
+
+    if (urlHost === referrerHost) {
+        return 'same-origin';
+    }
+
+    var isAnException = corsExceptions.some(function(exception) {
+        return (url.indexOf(exception) !== -1);
+    });
+
+    return isAnException ? 'cors' : 'no-cors';
+}
+
+function hostParser(url) {
+    var match = url.match(/^(https?\:\/\/[^\/]*)(\/|$)/);
+    return match && match[1];
 }
 
 function formatHeaders(headersObject) {
@@ -107,42 +172,41 @@ function formatHeaders(headersObject) {
 function createRequestObject(request) {
     return {
         method: request.method,
-        referrer: request.referrer,
         url: request.url,
+        referrer: request.referrer,
         headers: formatHeaders(request.headers)
     };
 }
 
 function createResponseObject(response) {
+    
     if (response.type === 'opaque') {
+        // Happens on cross-origin requests. If the server returns an "Access-Control-Allow-Origin" header, you can 
+        // add the domain in the "corsExceptions" option.
         return {
             opaque: true
         };
     }
 
-    return {
+    var result = {
         status: response.status,
-        statusText: response.statusText,
-        url: response.url,
-        headers: formatHeaders(response.headers)
+        statusText: response.statusText
     };
-}
 
-function log(data, criticity = LOG_INFO) {
-    if (criticity <= logLevel) {
-        if (criticity === LOG_ERRORS) {
-            console.error(data);
-        } else if (criticity === LOG_WARNINGS) {
-            console.warn(data);
-        } else if (criticity === LOG_INFO) {
-            console.info(data);
-        } else {
-            console.log(data);
-        }
+    if (response.url) {
+        result.url = response.url;
     }
+
+    var headers = formatHeaders(response.headers);
+    if (headers.length > 0) {
+        result.headers = headers;
+    }
+
+    return result;
 }
 
-},{"./workerClientsList":2}],2:[function(require,module,exports){
+
+},{"./logger":1,"./workerClientsList":3}],3:[function(require,module,exports){
 var WorkerClientsList = function() {
 
     var clientsList = {};
@@ -188,4 +252,4 @@ var WorkerClientsList = function() {
 };
 
 module.exports = new WorkerClientsList();
-},{}]},{},[1]);
+},{}]},{},[2]);

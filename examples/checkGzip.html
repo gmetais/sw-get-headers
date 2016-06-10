@@ -1,39 +1,114 @@
 <html>
 <head>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <style>
+        #request, #response {
+            margin: 5px;
+            padding: 5px;
+            width: calc(100% - 10px);
+            border: 1px solid black;
+            white-space: pre;
+            font-family: Consolas;
+        }
+        #plugged {
+            margin: 20px 0;
+            font-weight: bold;
+            color: red;
+        }
+    </style>
 </head>
 <body>
     <h1>Gzip checker example</h1>
-    <button onclick="sendCorsRequest()">Send a cross-domain request</button>
-    <button onclick="sendRequest()">Send a same-domain request</button>
+    <div id="plugged">The service worker is not fully installed, you need to refresh the page.</div>
+    <button onclick="requestSameDomain()">Send a same-domain request</button>
     <br>
-    <img id="googleLogo" src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png" />
-    <img id="localImage" src="exemple-image.jpg" />
-    <script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
+    <button onclick="requestCorsAllowNoException()">Send a cross-domain request to a domain with allow-origin and no exception set</button>
+    <br>
+    <button onclick="requestCorsAllowException()">Send a cross-domain request to a domain with allow-origin and an exception</button>
+    <br>
+    <button onclick="requestCorsNoAllowNoException()">Send a cross-domain request to a domain without allow-origin and no exception set</button>
+    <br>
+    <button onclick="requestCorsNoAllowException()">Send a cross-domain request to a domain without allow-origin and an exception</button>
+    <br>
+    Request:
+    <div id="request"></div>
+    Response:
+    <div id="response"></div>
     
     <script src="/swgetheaders-page.js"></script>
     <script>
+        
+        // Needed because the library uses browserify
         var swgetheaders = require('swgetheaders');
-        swgetheaders.registerServiceWorker('/swgetheaders-worker.js', {logLevel: 2});
+        
+        // Register the service worker (with options)
+        swgetheaders.registerServiceWorker('/swgetheaders-worker.js', {
+            debug: true,
+            corsExceptions: [
+                'code.jquery.com',
+                'platform.twitter.com'
+            ]
+        });
+        
+        // Console log when the service worker is ready to do things
         swgetheaders.on('plugged', function() {
             console.log('The service worker is now activated and ready to listen to requests');
-        });
-        swgetheaders.on('request', function(request) {
-            console.log('A request was just sent:');
-            console.log(request);
-        });
-        swgetheaders.on('response', function(request, response) {
-            console.log('A response just arrived. We have both the request and the response:');
-            console.log(request);
-            console.log(response);
+            document.getElementById('plugged').style.display = 'none';
         });
 
-        function sendCorsRequest() {
-            document.getElementById('googleLogo').src = 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png?q=' + Date.now();
+        // Fill up the request and response divs with the JSON results
+        swgetheaders.on('response', function(request, response) {
+            console.log('A response just arrived. We have both the request and the response:');
+
+            if (swgetheaders.isPlugged() && handMadeRequest) {
+                document.getElementById('request').innerHTML = JSON.stringify(request, null, 2);
+                document.getElementById('response').innerHTML = JSON.stringify(response, null, 2);
+            }
+        });
+
+        var handMadeRequest = false;
+
+        function requestSameDomain() {
+            clearFields();
+            injectScript('assets/justAScript.js');
+            handMadeRequest = true;
         }
-        function sendRequest() {
-            document.getElementById('localImage').src = 'exemple-image.jpg?q=' + Date.now();
+
+        function requestCorsAllowNoException() {
+            clearFields();
+            injectScript('https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js');
+            handMadeRequest = true;
         }
+
+        function requestCorsAllowException() {
+            clearFields();
+            injectScript('https://code.jquery.com/jquery-3.0.0.min.js');
+            handMadeRequest = true;
+        }
+
+        function requestCorsNoAllowNoException() {
+            clearFields();
+            injectScript('https://connect.facebook.net/en_EN/sdk.js');
+            handMadeRequest = true;
+        }
+
+        function requestCorsNoAllowException() {
+            clearFields();
+            injectScript('https://platform.twitter.com/widgets.js');
+            handMadeRequest = true;
+        }
+
+        function injectScript(url) {
+            var script = document.createElement('script');
+            script.src = url + '?q=' + Date.now();
+            document.body.appendChild(script);
+        }
+
+        function clearFields() {
+            document.getElementById('request').innerHTML = '';
+            document.getElementById('response').innerHTML = '';
+        }
+
     </script>
 </body>
 </html>

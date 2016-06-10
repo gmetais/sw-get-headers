@@ -6,7 +6,7 @@
 <script src="/swgetheaders-page.js"></script>
 <script>
     var options = {
-        logLevel: 2
+        debug: true
     };
     swgetheaders.registerServiceWorker('/swgetheaders-worker.js', options);
     swgetheaders.on('plugged', function() {
