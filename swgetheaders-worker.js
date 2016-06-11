@@ -36,7 +36,7 @@ var logger = require('./logger');
 
 
 var corsExceptions = [];
-var sameDomainOnly = false;
+var sameOriginOnly = false;
 
 self.addEventListener('activate', function (event) {
     logger.log('[Service worker] Activated');
@@ -52,7 +52,7 @@ self.addEventListener('message', function handler (event) {
         }
 
         corsExceptions = event.data.corsExceptions;
-        sameDomainOnly = event.data.sameDomainOnly;
+        sameOriginOnly = event.data.sameOriginOnly;
 
         logger.log('[Service worker] Hello message received');
 
@@ -81,17 +81,13 @@ self.addEventListener('fetch', function(event) {
     var request = createRequestObject(event.request);
 
     logger.log('[Service worker] Request sent');
-    sendToClient(event.clientId, {
-        type: 'request',
-        request: request
-    });
 
     var mode = getCorsForUrl(event.request);
     // Credentials would probably need some more options (which domains to send credentials to)
     var credentials = (mode === 'same-origin') ? 'include' : 'omit';
 
-    if (sameDomainOnly && mode !== 'same-origin') {
-        logger.log('[Service worker] Request blocked by sameDomainOnly option');
+    if (sameOriginOnly && mode !== 'same-origin') {
+        logger.log('[Service worker] Request blocked by sameOriginOnly option');
         return;
     }
 

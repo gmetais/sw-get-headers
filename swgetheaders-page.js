@@ -42,7 +42,7 @@ var logger = require('./logger');
 
     var plugged = false;
     var corsExceptions = [];
-    var sameDomainOnly = false;
+    var sameOriginOnly = false;
 
     function registerServiceWorker(swPath, options) {
         if (options && options.debug !== undefined) {
@@ -53,8 +53,8 @@ var logger = require('./logger');
             corsExceptions = options.corsExceptions;
         }
 
-        if (options && options.sameDomainOnly !== undefined) {
-            sameDomainOnly = options.sameDomainOnly;
+        if (options && options.sameOriginOnly !== undefined) {
+            sameOriginOnly = options.sameOriginOnly;
         }
 
         if (!('serviceWorker' in navigator)) {
@@ -97,7 +97,7 @@ var logger = require('./logger');
             type: 'hello',
             debug: logger.getDebug(),
             corsExceptions: corsExceptions,
-            sameDomainOnly: sameDomainOnly
+            sameOriginOnly: sameOriginOnly
         }, [messageChannel.port2]);
     }
 
@@ -109,8 +109,6 @@ var logger = require('./logger');
         if (data.type === 'plugged') {
             plugged = true;
             broadcast(onPluggedCallbacks);
-        } else if (data.type === 'request') {
-            broadcast(onRequestCallbacks, data.request);
         } else if (data.type === 'response') {
             broadcast(onResponseCallbacks, data.request, data.response);
         }
@@ -126,9 +124,6 @@ var logger = require('./logger');
         switch(event) {
             case 'plugged':
                 onPluggedCallbacks.push(callback);
-                break;
-            case 'request':
-                onRequestCallbacks.push(callback);
                 break;
             case 'response':
                 onResponseCallbacks.push(callback);
