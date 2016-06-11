@@ -7,12 +7,14 @@ Examples of things that it could help you with:
 - detect misconfigured server (caching, compression, keep-alive, ...)
 - read caching and expiring informations
 
-*This project is currenlty more a "proof of concept" than a library you can rely on. Please use with extra caution and **PLEASE report any bug you see**.*
+*This project is currenlty more a "proof of concept" than a library you can rely on. Please use with extra caution and PLEASE report any bug you see.*
 
 
 ## How it works
 
 It uses [Service Workers](https://developer.mozilla.org/fr/docs/Web/API/Service_Worker_API) to spy on every request made, read the headers, than send the information back to the page's JavaScript.
+
+**Your website needs to be on HTTPS.** It works on localhost regardless of protocol.
 
 For security reasons, many limitations have been built in browsers regarding reading headers on **cross-domain** requests. Have a look at the [Cross domain problems](#cross-domain-problems) chapter.
 
