@@ -36,6 +36,7 @@ var logger = require('./logger');
 
 
 var corsExceptions = [];
+var sameDomainOnly = false;
 
 self.addEventListener('activate', function (event) {
     logger.log('[Service worker] Activated');
@@ -51,6 +52,7 @@ self.addEventListener('message', function handler (event) {
         }
 
         corsExceptions = event.data.corsExceptions;
+        sameDomainOnly = event.data.sameDomainOnly;
 
         logger.log('[Service worker] Hello message received');
 
@@ -84,9 +86,14 @@ self.addEventListener('fetch', function(event) {
         request: request
     });
 
-    var mode = getCorsForUrl(event.request.url, event.request.referrer);
+    var mode = getCorsForUrl(event.request);
     // Credentials would probably need some more options (which domains to send credentials to)
     var credentials = (mode === 'same-origin') ? 'include' : 'omit';
+
+    if (sameDomainOnly && mode !== 'same-origin') {
+        logger.log('[Service worker] Request blocked by sameDomainOnly option');
+        return;
+    }
 
     event.respondWith(
 
@@ -137,16 +144,20 @@ function sendToClient(clientId, data) {
 }
 
 // Checks if the request should be fetched with the mode 'cors', 'np-cors' or 'same-origin'
-function getCorsForUrl(url, referrer) {
-    var urlHost = hostParser(url);
-    var referrerHost = hostParser(referrer);
+function getCorsForUrl(request) {
+    var urlHost = hostParser(request.url);
+    var referrerHost = hostParser(request.referrer);
 
-    if (urlHost === referrerHost) {
+    if (request.mode === 'navigate') {
+        return 'navigate';
+    }
+
+    if (urlHost === referrerHost || request.referrer === '') {
         return 'same-origin';
     }
 
     var isAnException = corsExceptions.some(function(exception) {
-        return (url.indexOf(exception) !== -1);
+        return (request.url.indexOf(exception) !== -1);
     });
 
     return isAnException ? 'cors' : 'no-cors';

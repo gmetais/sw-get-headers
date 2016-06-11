@@ -42,6 +42,7 @@ var logger = require('./logger');
 
     var plugged = false;
     var corsExceptions = [];
+    var sameDomainOnly = false;
 
     function registerServiceWorker(swPath, options) {
         if (options && options.debug !== undefined) {
@@ -50,6 +51,10 @@ var logger = require('./logger');
 
         if (options && options.corsExceptions !== undefined) {
             corsExceptions = options.corsExceptions;
+        }
+
+        if (options && options.sameDomainOnly !== undefined) {
+            sameDomainOnly = options.sameDomainOnly;
         }
 
         if (!('serviceWorker' in navigator)) {
@@ -91,7 +96,8 @@ var logger = require('./logger');
         navigator.serviceWorker.controller.postMessage({
             type: 'hello',
             debug: logger.getDebug(),
-            corsExceptions: corsExceptions
+            corsExceptions: corsExceptions,
+            sameDomainOnly: sameDomainOnly
         }, [messageChannel.port2]);
     }
 
