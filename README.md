@@ -1,25 +1,25 @@
 # Service Worker Get Headers
 
-Being able to see headers information on every request can be very useful in browsers "network" console. It can sometimes be interesting to access these headers informations from the page, in JavaScript. This is possible on XMLHttpRequest, but not on every other kind of requests.
+Being able to see headers information on every request can be very useful in your browser's network console. But it could sometimes be interesting to access these headers informations from the page, in JavaScript. XMLHttpRequests allow that, but most requests on a page are not XHR.
 
-Here are a few examples of things that it could help you with:
+Examples of things that it could help you with:
 - read file size on images, stylesheets, scripts, fonts, ...
 - detect misconfigured server (caching, compression, keep-alive, ...)
 - read caching and expiring informations
 
-This project is currenlty more a "proof of concept" than a library you can rely on. Please use with extra caution and *PLEASE PLEASE PLEASE report any bug you see*.
+*This project is currenlty more a "proof of concept" than a library you can rely on. Please use with extra caution and **PLEASE report any bug you see**.*
 
 
 ## How it works
 
-It uses Service Workers to spy on every request made, read the headers, than send the information back to the page's JavaScript.
+It uses [Service Workers](https://developer.mozilla.org/fr/docs/Web/API/Service_Worker_API) to spy on every request made, read the headers, than send the information back to the page's JavaScript.
 
-For security reasons, many limitations have been built in browsers regarding reading headers on *cross-domain* requests. Have a look at the [Cross domain problems](#cross-domain-problems) chapter.
+For security reasons, many limitations have been built in browsers regarding reading headers on **cross-domain** requests. Have a look at the [Cross domain problems](#cross-domain-problems) chapter.
 
 
 ## Compatible browsers
 
-This library will only work on browsers that support Service Workers: Chrome, FireFox and Opera. This is 53% of browsers. Edge should arrive soon.
+This library will only work on browsers that support Service Workers: Chrome, FireFox and Opera. Edge should arrive soon. Have a look on [CanIUse](http://caniuse.com/#feat=serviceworkers).
 
 
 ## Install
@@ -28,9 +28,9 @@ First you need to download the two scripts `swgetheaders-page.js` and `swgethead
 
 #### The page-side script
 
-The `swgetheaders-page.js` is the library that your code will control. Just call it on your page like this:
+The `swgetheaders-page.js` is the library that your code will control. Just call it as a normal script on your page like this:
 ```html
-<script src="/swgetheaders-page.js"></script>
+<script src="/some-path/swgetheaders-page.js"></script>
 ```
 You can (and probably should) concat it with your other scripts.
 
@@ -47,7 +47,7 @@ Please note that the worker will not be available on the first page load, but on
 
 ## Usage
 
-You can subscribe to 3 kind of events:
+You can subscribe to 2 kind of events:
 
 #### The `plugged` event
 ```js
@@ -55,21 +55,21 @@ swgetheaders.on('plugged', function() {
     console.log('The service worker is now activated and ready to listen to requests');
 });
 ```
-The worker is installed + the communication channel between the page and the worker is open. In most case, this appends lately on the page load and the worker has already spied some network requests. It automatically puts the headers in a waiting list and sends them to the page only once the communication channel is open, so you will probably be flooded by old requests just after this 'plugged' event is sent.
+The worker is installed + the communication channel between the page and the worker is open. In most case, this appends lately on the page load and the worker has already spied some network requests. It automatically puts their headers in a waiting list and sends them to the page once the communication channel is open, so you will probably be flooded by previous requests just after this `plugged` event is sent.
 
-The status of the worker can also be asked at any time like this:
-```js
-swgetheaders.isPlugged()
-```
+The status of the worker can also be asked at any time like this: `swgetheaders.isPlugged()`
 
-#### The `request` event
+
+#### The `response` event
 ```js
-swgetheaders.on('request', function(request) {
-    console.log('A request was just sent: ', request);
+swgetheaders.on('response', function(request, response) {
+    console.log('A response just arrived: ', response);
 });
 ```
 
-The worker just saw a request sent to the network. The response is not arrived yet. The callback method takes one argument `request` which contains the request informations. Example:
+The worker catched a network response. The callback method takes two arguments:
+
+- First argument: the `request` object that looks like below:
 ```json
 {
   "method": "GET",
@@ -88,17 +88,7 @@ The worker just saw a request sent to the network. The response is not arrived y
 }
 ```
 
-#### The `response` event
-```js
-swgetheaders.on('response', function(request, response) {
-    console.log('A response just arrived: ', response);
-});
-```
-
-The worker catched a network response. The callback method takes two arguments:
-- the `request` (same object as in the previous `request` event)
-- the `response` object that looks like below:
-
+- Second argument: the `response` object that looks like this:
 ```json
 {
   "status": 200,
@@ -163,11 +153,9 @@ When set to `true`, restricts spying to the same-origin requests. All third-part
 
 By default, the library fetches every cross-domain in `no-cors` mode, to avoid the request to be blocked by the browser's cross-origin limitations. The problem is that the `no-cors` responses are "opaque", which means that headers are not accessible.
 
-If some of the cross-domain requests on your page respond with the `Access-Control-Allow-Origin` header, use this option to tell the library that it can call them with the `cors` mode. This means that the response headers will be readable (not all of the headers).
+If some of the cross-domain requests on your page respond with the `Access-Control-Allow-Origin` header, use this option to tell the library that it can call them with the `cors` mode. This means that the response headers will be readable (not all of the headers). Have a look at the [Cross domain problems](#cross-domain-problems) chapter for more information.
 
-Have a look at the [Cross domain problems](#cross-domain-problems) chapter) for more information.
-
-This option needs to be an array of strings. When the browser makes a request to an URL, it will be checked with a simple `indexOf` on each of the specified exceptions, like this: `if (url.indexOf(exception) >= 0) {}`. So you can enter here a domain name, a file name, a full path, ...
+This option needs to be an array of strings. When the browser makes a request to an URL, the URL will be checked with a simple `indexOf` on each of the specified exceptions, like this: `if (url.indexOf(exception) >= 0) {cors}`. So you can enter here domain names, file names, full paths, ...
 
 #### `debug`
 
@@ -200,7 +188,7 @@ swgetheaders.on('response', function(request, response) {
 
 ## Cross domain problems
 
-CORS problems are a bit annoying.
+CORS restrictions are a bit annoying.
 
 #### Opaque response
 When making a cross-domain request, the service-worker can't access the response headers (neither the response code). The library will fire a `response` event, but the response object will only be: `{"opaque": true}`.
