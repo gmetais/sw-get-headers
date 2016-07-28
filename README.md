@@ -218,4 +218,4 @@ If you want me to go on enhancing the library, please add a star to the project 
 # Author
 Gaël Métais. I'm a webperf freelance. Follow me on Twitter [@gaelmetais](https://twitter.com/gaelmetais), I tweet about Web Performances and Front-end!
 
-I can also help your company implement Service Workers, visit [my website](http://www.gaelmetais.com).
+I can also help your company implement Service Workers, visit [my website](https://www.gaelmetais.com).
